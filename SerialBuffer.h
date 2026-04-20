@@ -1,5 +1,6 @@
 #pragma once
 #include <Windows.h>
+#include <type_traits>
 
 #define SERIAL_BUFFER_FULL -1
 #define NO_DATA_IN_BUF -2
