@@ -1,7 +1,6 @@
 #include "NetworkManager.h"
 #include "Defines.h"
-#include "Protocol.h"
-#include "memoryPool.cpp"
+#include "MemoryPool.h"
 #include <iostream>
 
 extern MemoryPool<SerialBuffer> serial_32_pool;
@@ -52,7 +51,7 @@ void NetworkManager::Disconnect(Session& s) {
 }
 
 void NetworkManager::SendUniCast(Session& s, SerialBuffer& serial) {
-    int len = serial.GetDataSize();
+    int len = serial.GetLength();
     int ret = s.SendQ->Enqueue(serial.GetBufferPtr(), len);
     if (ret != len) {
         Disconnect(s);
@@ -71,13 +70,13 @@ void NetworkManager::AcceptProc() {
     Session* session = new Session(clientSock, dw_sessionId);
     sessions[dw_sessionId] = session;
 
-    SerialBuffer* serial = serial_32_pool.allocate();
+    SerialBuffer* serial = serial_32_pool.Allocate();
     serial = new (serial) SerialBuffer();
 
     CreateNewCharacter(*session, *serial);
 
     serial->~SerialBuffer();
-    serial_32_pool.deallocate(serial);
+    serial_32_pool.Free(serial);
     dw_sessionId++;
 }
 
@@ -96,7 +95,7 @@ void NetworkManager::RecvPacket(Session& s) {
     }
     s.RecvQ->MoveRear(recvRet);
 
-    SerialBuffer* serial = serial_32_pool.allocate();
+    SerialBuffer* serial = serial_32_pool.Allocate();
     serial = new (serial) SerialBuffer();
 
     while (1) {
@@ -107,7 +106,7 @@ void NetworkManager::RecvPacket(Session& s) {
 
         s.RecvQ->Peek(serial->GetBufferPtr(), sizeof(st_PACKET_HEADER));
         serial->MoveWritePos(sizeof(st_PACKET_HEADER));
-        serial->SetDataSize(sizeof(st_PACKET_HEADER));
+        serial->SetDataLength(sizeof(st_PACKET_HEADER));
 
         *serial >> header.byCode;
         if (header.byCode != dfPACKET_CODE) {
@@ -128,12 +127,12 @@ void NetworkManager::RecvPacket(Session& s) {
         serial->Clear();
         s.RecvQ->Dequeue(serial->GetBufferPtr(), header.bySize);
         serial->MoveWritePos(header.bySize);
-        serial->SetDataSize(header.bySize);
+        serial->SetDataLength(header.bySize);
         
         PacketProc(s, header.byType, *serial);
     }
     serial->~SerialBuffer();
-    serial_32_pool.deallocate(serial);
+    serial_32_pool.Free(serial);
 }
 
 void NetworkManager::SendPacket(Session& s) {

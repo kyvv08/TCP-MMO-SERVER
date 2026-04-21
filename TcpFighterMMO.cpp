@@ -15,8 +15,9 @@
 #include "NetworkManager.h"
 #include "GameManager.h"
 
-// 메모리 풀 cpp 포함 (템플릿 인스턴스화 용도)
-#include "memoryPool.cpp"
+// 메모리 풀 헤더 포함
+#include "MemoryPool.h"
+#include "SerialBuffer.h"
 
 #define dfSERVER_PORT 11850
 

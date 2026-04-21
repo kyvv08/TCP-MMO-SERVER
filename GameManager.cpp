@@ -1,7 +1,7 @@
 #pragma comment(lib, "winmm.lib") // timeGetTime 라이브러리 추가
 #include "GameManager.h"
 #include "PacketCreator.h"
-#include "memoryPool.cpp" // MemoryPool 선언을 위해 추가
+#include "MemoryPool.h" // MemoryPool 선언을 위해 추가
 #include <cmath>
 #include <windows.h>
 #include <mmsystem.h> // timeGetTime 사용을 위해 명시적으로 추가
@@ -63,7 +63,7 @@ bool GameManager::CheckSectorUpdate(Character& c) {
 }
 
 void GameManager::SendSectorCreateDeleteMsg(Character& c, const stSectorAround& oldAround, const stSectorAround& curAround) {
-    SerialBuffer* msg = serial_32_pool.allocate();
+    SerialBuffer* msg = serial_32_pool.Allocate();
     msg = new (msg) SerialBuffer(64);
 
     PacketCreator::DeleteCharacterMsg(*msg, c.GetSessionId());
@@ -90,7 +90,7 @@ void GameManager::SendSectorCreateDeleteMsg(Character& c, const stSectorAround& 
     }
     
     msg->~SerialBuffer();
-    serial_32_pool.deallocate(msg);
+    serial_32_pool.Free(msg);
 }
 
 void GameManager::SectorUpdate(Character& c) {
@@ -122,7 +122,7 @@ void GameManager::OnCharacterConnect(Character& c) {
     c.SetSector(curSector);
     sector[curSector.y][curSector.x].push_back(&c);
 
-    SerialBuffer* serial = serial_32_pool.allocate();
+    SerialBuffer* serial = serial_32_pool.Allocate();
     serial = new (serial) SerialBuffer();
 
     PacketCreator::CreateMyCharacterMsg(*serial, c.GetSessionId(), c.GetDir(), c.GetCurX(), c.GetCurY(), c.GetHp());
@@ -138,11 +138,11 @@ void GameManager::OnCharacterConnect(Character& c) {
     }
     
     serial->~SerialBuffer();
-    serial_32_pool.deallocate(serial);
+    serial_32_pool.Free(serial);
 }
 
 void GameManager::OnCharacterDisconnect(Character& c) {
-    SerialBuffer* serial = serial_32_pool.allocate();
+    SerialBuffer* serial = serial_32_pool.Allocate();
     serial = new (serial) SerialBuffer();
     
     PacketCreator::DeleteCharacterMsg(*serial, c.GetSessionId());
@@ -159,11 +159,11 @@ void GameManager::OnCharacterDisconnect(Character& c) {
     delete &c; // 메모리 해제
     
     serial->~SerialBuffer();
-    serial_32_pool.deallocate(serial);
+    serial_32_pool.Free(serial);
 }
 
 void GameManager::SendSectorCreateMsg(Character& c, SerialBuffer& msg, const stSectorPos& pos) {
-    SerialBuffer* msg2 = serial_32_pool.allocate();
+    SerialBuffer* msg2 = serial_32_pool.Allocate();
     msg2 = new (msg2) SerialBuffer();
     auto& sessions = NetworkManager::GetInstance().GetSessions();
 
@@ -186,11 +186,11 @@ void GameManager::SendSectorCreateMsg(Character& c, SerialBuffer& msg, const stS
     }
     
     msg2->~SerialBuffer();
-    serial_32_pool.deallocate(msg2);
+    serial_32_pool.Free(msg2);
 }
 
 void GameManager::SendSectorDeleteMsg(Character& c, SerialBuffer& msg, const stSectorPos& pos) {
-    SerialBuffer* delMsg = serial_32_pool.allocate();
+    SerialBuffer* delMsg = serial_32_pool.Allocate();
     delMsg = new (delMsg) SerialBuffer();
     auto& sessions = NetworkManager::GetInstance().GetSessions();
 
@@ -209,7 +209,7 @@ void GameManager::SendSectorDeleteMsg(Character& c, SerialBuffer& msg, const stS
     }
     
     delMsg->~SerialBuffer();
-    serial_32_pool.deallocate(delMsg);
+    serial_32_pool.Free(delMsg);
 }
 
 void GameManager::SendDamage(Character& c, SerialBuffer& msg, BYTE dir, BYTE type) {

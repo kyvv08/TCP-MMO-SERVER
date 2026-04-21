@@ -54,3 +54,6 @@
 #define dfERROR_RANGE		50
 
 #define dfPLAYER_HP			100
+
+// 패킷 사이즈 공격 방어용 최대 버퍼 한도 지정
+#define dfMAX_PACKET_SIZE 1024

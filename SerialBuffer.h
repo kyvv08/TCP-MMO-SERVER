@@ -5,203 +5,68 @@
 #define SERIAL_BUFFER_FULL -1
 #define NO_DATA_IN_BUF -2
 
-
-class SerialBuffer
-{
+class SerialBuffer {
 public:
-	enum BUFFER_SIZE {
-		SIZE_DEFAULT = 32//8192 -- 이 서버 전용 직렬화 버퍼
-	};
-	inline SerialBuffer();
-	inline SerialBuffer(int);
+    enum BufferDefaults {
+        DEFAULT_SIZE = 32
+    };
 
-	inline void Init();
+    SerialBuffer();
+    SerialBuffer(int size);
+    virtual ~SerialBuffer();
 
-	inline virtual ~SerialBuffer();
+    void Initialize();
+    void Clear();
 
-	inline void Clear();
-	inline int GetBufferSize();
-	inline int GetDataSize();
-	inline char* GetBufferPtr();
-	inline char* GetBufferWritePtr();
+    int GetCapacity() const;
+    int GetLength() const;
+    char* GetBufferPtr();
+    char* GetBufferWritePtr();
 
-	inline int MoveWritePos(int);
-	inline int MoveReadPos(int);
+    void MoveWritePos(int len);
+    void MoveReadPos(int len);
+    void SetDataLength(int len);
 
-	inline void SetDataSize(int);
+    int Read(char* pDest, int len);
+    int Write(const char* pSrc, int len);
 
-	inline int GetData(char*, int);
-	inline int PutData(char*, int);
+    // Template operators (must remain in header)
+    template <typename T, std::enable_if_t<std::is_arithmetic_v<T>, int> = 0>
+    SerialBuffer& operator << (const T& tValue) {
+        if (m_Capacity - m_Length < (int)sizeof(T)) {
+            throw(SERIAL_BUFFER_FULL);
+        }
+        Write(reinterpret_cast<const char*>(&tValue), sizeof(T));
+        return *this;
+    }
 
-	template <typename T, std::enable_if_t<std::is_arithmetic_v<T>, int> = 0>
-	inline SerialBuffer& operator << (T& tValue);
+    template <typename T, std::enable_if_t<std::is_arithmetic_v<T>, int> = 0>
+    SerialBuffer& operator << (T& tValue) {
+        return *this << static_cast<const T&>(tValue);
+    }
 
-	template <typename T, std::enable_if_t<std::is_arithmetic_v<T>, int> = 0>
-	inline SerialBuffer& operator << (const T& tValue);
+    SerialBuffer& operator << (const char* pStr);
+    SerialBuffer& operator << (const WCHAR* pWStr);
 
-	inline SerialBuffer& operator << (const char* tValue);
+    template <typename T, std::enable_if_t<std::is_arithmetic_v<T>, int> = 0>
+    SerialBuffer& operator >> (T& tValue) {
+        if (m_Length < (int)sizeof(T)) {
+            throw(NO_DATA_IN_BUF);
+        }
+        Read(reinterpret_cast<char*>(&tValue), sizeof(T));
+        return *this;
+    }
 
-	inline SerialBuffer& operator << (const WCHAR* tValue);
-
-
-	template <typename T, std::enable_if_t<std::is_arithmetic_v<T>, int> = 0>
-	inline SerialBuffer& operator >> (T& tValue);
-
-	template <typename T, std::enable_if_t<std::is_arithmetic_v<T>, int> = 0>
-	inline SerialBuffer& operator>> (const T& tValue);
-
-	inline SerialBuffer& operator>> (const char* tValue);
-
-	inline SerialBuffer& operator>> (const WCHAR* tValue);
+    // Explicit char/WCHAR reading support could be added if needed
+    SerialBuffer& operator >> (char* pDest);
+    SerialBuffer& operator >> (WCHAR* pDest);
 
 protected:
-	int bufSize;
-	int dataSize;
+    int m_Capacity;
+    int m_Length;
+
 private:
-	char* buf;
-	int write;
-	int read;
+    char* m_pBuf;
+    int m_WritePos;
+    int m_ReadPos;
 };
-
-SerialBuffer::SerialBuffer() :write(0), read(0), bufSize(SIZE_DEFAULT), dataSize(0) {
-	buf = new char[SIZE_DEFAULT];
-}
-
-SerialBuffer::SerialBuffer(int size) :write(0), read(0), bufSize(size), dataSize(0) {
-	buf = new char[size];
-}
-
-SerialBuffer::~SerialBuffer() {
-	delete buf;
-}
-
-void SerialBuffer::Init() {
-	//memset(buf, 0, dataSize);
-	write = read = dataSize = 0;
-}
-
-void SerialBuffer::Clear() {
-	//memset(buf, 0, dataSize);
-	write = read = dataSize = 0;
-}
-
-int SerialBuffer::GetBufferSize() {
-	return bufSize;
-}
-
-int SerialBuffer::GetDataSize() {
-	return dataSize;
-}
-
-void SerialBuffer::SetDataSize(int size) {
-	dataSize = size;
-}
-
-char* SerialBuffer::GetBufferPtr() {
-	return buf;
-}
-
-char* SerialBuffer::GetBufferWritePtr() {
-	return buf + write;
-}
-
-int SerialBuffer::MoveWritePos(int len) {
-	write += len;
-	return len;
-}
-
-int SerialBuffer::MoveReadPos(int len) {
-	read += len;
-	return len;
-}
-
-
-int SerialBuffer::GetData(char* data, int len) {
-	if (dataSize < len)return -1;
-	memcpy(data, buf + read, len);
-	dataSize -= len;
-	read += len;
-	return len;
-}
-
-int SerialBuffer::PutData(char* data, int len) {
-	if (bufSize - dataSize < len)return -1;
-	memcpy(buf + write, data, len);
-	dataSize += len;
-	write += len;
-	return len;
-}
-
-//------------------------------------
-//----------------넣기----------------
-//------------------------------------
-
-template <typename T, std::enable_if_t<std::is_arithmetic_v<T>, int>>
-SerialBuffer& SerialBuffer::operator << (T& tValue) {
-	if (bufSize - dataSize < sizeof(T)) {
-		throw(SERIAL_BUFFER_FULL);
-	}
-	PutData((char*)&tValue, sizeof(T));
-	return *this;
-}
-
-template <typename T, std::enable_if_t<std::is_arithmetic_v<T>, int>>
-SerialBuffer& SerialBuffer::operator << (const T& tValue) {
-	if (bufSize - dataSize < sizeof(T)) {
-		throw(SERIAL_BUFFER_FULL);
-	}
-	PutData((char*)&tValue, sizeof(T));
-	return *this;
-}
-
-SerialBuffer& SerialBuffer::operator << (const char* tValue) {
-	if (tValue == NULL) return *this;
-	int len = strlen(tValue);
-	if (bufSize - dataSize < len) {
-		throw(SERIAL_BUFFER_FULL);
-	}
-	PutData((char*)tValue, len);
-	return *this;
-}
-
-SerialBuffer& SerialBuffer::operator << (const WCHAR* tValue) {
-	if (tValue == NULL) return *this;
-	int len = wcslen(tValue) * 2;
-	if (bufSize - dataSize < len) {
-		throw(SERIAL_BUFFER_FULL);
-	}
-	PutData((char*)tValue, len);
-	return *this;
-}
-
-//------------------------------------
-//----------------빼기----------------
-//------------------------------------
-
-template <typename T, std::enable_if_t<std::is_arithmetic_v<T>, int>>
-SerialBuffer& SerialBuffer::operator >> (T& tValue) {
-	if (dataSize < sizeof(T)) {
-		throw(NO_DATA_IN_BUF);
-	}
-	GetData((char*)&tValue, sizeof(T));
-	return *this;
-}
-
-template <typename T, std::enable_if_t<std::is_arithmetic_v<T>, int>>
-SerialBuffer& SerialBuffer::operator >> (const T& tValue) {
-	if (dataSize < sizeof(T)) {
-		throw(NO_DATA_IN_BUF);
-	}
-	GetData((char*)&tValue, sizeof(T));
-	return *this;
-}
-
-SerialBuffer& SerialBuffer::operator >> (const char* tValue) {
-	GetData((char*)tValue, dataSize);
-	return *this;
-}
-
-SerialBuffer& SerialBuffer::operator >> (const WCHAR* tValue) {
-	GetData((char*)tValue, dataSize);
-	return *this;
-}

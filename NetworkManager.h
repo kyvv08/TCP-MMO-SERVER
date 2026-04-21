@@ -4,9 +4,6 @@
 #include "Session.h"
 #include "SerialBuffer.h"
 
-// 패킷 사이즈 공격 방어용 최대 버퍼 한도 지정
-#define dfMAX_PACKET_SIZE 1024
-
 class NetworkManager {
 public:
     static NetworkManager& GetInstance() {
